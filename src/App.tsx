@@ -1,38 +1,27 @@
-import reactLogo from "./assets/logos/react.svg";
-import viteLogo from "/vite.svg";
-import "./App.css";
-import { useStore } from "./store";
+import { Sidebar } from "@/components/Sidebar";
+import { Header } from "@/components/Header";
+import { PositionsTable } from "@/components/PositionsTable";
+import { Footer } from "@/components/Footer";
 
-function App() {
-  const { count, increment } = useStore();
-
+const App = () => {
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="flex flex-col h-screen bg-black-700 text-white-100 font-sans overflow-hidden">
+      <Header />
+
+      <div className="flex flex-1 overflow-hidden">
+        <div className="hidden md:block w-64 h-full shrink-0">
+          <Sidebar />
+        </div>
+
+        <div className="flex flex-col flex-1 min-w-0 h-full">
+          <main className="flex-1 overflow-auto">
+            <PositionsTable />
+          </main>
+        </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button
-          onClick={increment}
-          className="bg-red-500 text-white p-2 rounded-md"
-        >
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+      <Footer />
+    </div>
   );
-}
+};
 
 export default App;

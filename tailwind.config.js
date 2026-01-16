@@ -13,10 +13,14 @@ export default {
 
         "black-100": "#474747",
         "black-400": "#323232",
+        "black-600": "#252525",
+        "black-700": "#161616",
+        "black-900": "#0a0a0a",
       },
       fontFamily: {
         sans: ["Satoshi", "system-ui", "sans-serif"],
       },
     },
   },
+  plugins: [require("tailwindcss-animate")],
 };
