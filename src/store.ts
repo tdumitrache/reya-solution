@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type {
   WalletSliceType,
   PositionsSliceType,
@@ -7,15 +8,22 @@ import type {
 } from "@/types/api";
 import { fetchWalletPositions, fetchAllPrices } from "@/services/api";
 
-// Wallet Store
-export const useWalletStore = create<WalletSliceType>((set) => ({
-  walletAddress: null,
-  setWalletAddress: (address: string | null) => {
-    set({ walletAddress: address });
-  },
-}));
+const WALLET_STORAGE_KEY = "reya-wallet";
 
-// Prices Store
+export const useWalletStore = create<WalletSliceType>()(
+  persist(
+    (set) => ({
+      walletAddress: null,
+      setWalletAddress: (address: string | null) => {
+        set({ walletAddress: address });
+      },
+    }),
+    {
+      name: WALLET_STORAGE_KEY,
+    }
+  )
+);
+
 export const usePricesStore = create<PricesSliceType>((set, get) => ({
   prices: [],
   isLoadingPrices: false,
@@ -26,7 +34,6 @@ export const usePricesStore = create<PricesSliceType>((set, get) => ({
       get().setPrices(prices);
       set({ isLoadingPrices: false });
     } catch (error) {
-      // Silently fail for prices - positions will use avgEntryPrice as fallback
       console.error("Failed to fetch prices:", error);
       set({ isLoadingPrices: false });
     }
@@ -47,9 +54,11 @@ export const usePricesStore = create<PricesSliceType>((set, get) => ({
       return { prices: updatedPrices };
     });
   },
+  clearPrices: () => {
+    set({ prices: [] });
+  },
 }));
 
-// Positions Store
 export const usePositionsStore = create<PositionsSliceType>((set) => ({
   positions: [],
   isLoadingPositions: false,
@@ -59,7 +68,6 @@ export const usePositionsStore = create<PositionsSliceType>((set) => ({
     try {
       const positions = await fetchWalletPositions(address);
       set({ positions, isLoadingPositions: false });
-      // Fetch prices after positions are loaded
       usePricesStore.getState().fetchPrices();
     } catch (error) {
       const message =

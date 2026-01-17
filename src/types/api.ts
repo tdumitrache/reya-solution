@@ -45,8 +45,57 @@ export interface PricesSliceType {
   fetchPrices: () => Promise<void>;
   setPrices: (prices: PriceType[]) => void;
   setPrice: (price: PriceType) => void;
+  clearPrices: () => void;
 }
 
 export type StoreStateType = WalletSliceType &
   PositionsSliceType &
   PricesSliceType;
+
+// WebSocket Types
+
+export type WebSocketConnectionStatusType =
+  | "connecting"
+  | "connected"
+  | "disconnected";
+
+export interface WebSocketPingMessageType {
+  type: "ping";
+  timestamp: number;
+}
+
+export interface WebSocketPongMessageType {
+  type: "pong";
+  timestamp: number;
+}
+
+export interface WebSocketSubscribeMessageType {
+  type: "subscribe";
+  channel: string;
+  id?: string;
+}
+
+export interface WebSocketSubscribedMessageType {
+  type: "subscribed";
+  channel: string;
+  contents?: PriceType[];
+}
+
+export interface WebSocketChannelDataMessageType {
+  type: "channel_data";
+  timestamp: number;
+  channel: string;
+  data: PriceType[];
+}
+
+export interface WebSocketErrorMessageType {
+  type: "error";
+  message: string;
+  channel?: string;
+}
+
+export type WebSocketIncomingMessageType =
+  | WebSocketPingMessageType
+  | WebSocketSubscribedMessageType
+  | WebSocketChannelDataMessageType
+  | WebSocketErrorMessageType;

@@ -8,7 +8,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import reyaLogo from "@/assets/logos/reya-logo.svg";
 
 export const Header = () => {
@@ -41,12 +40,8 @@ export const Header = () => {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center sm:border-r sm:border-black-400 sm:pr-4">
             <img src={reyaLogo} alt="Reya Logo" className="h-8 w-8" />
-            <Separator
-              orientation="vertical"
-              className="h-6 bg-black-600 hidden sm:block"
-            />
           </div>
           <h1 className="text-sm font-medium text-white-950">Portfolio</h1>
         </div>

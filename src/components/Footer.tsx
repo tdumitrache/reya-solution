@@ -29,7 +29,7 @@ export function Footer() {
 
       <div className="flex items-center gap-6">
         <a
-          href="#"
+          href="https://docs.reya.xyz/"
           target="_blank"
           className="flex items-center gap-1 hover:text-white-100 transition-colors"
         >
@@ -38,7 +38,7 @@ export function Footer() {
         </a>
         <Separator orientation="vertical" className="h-3 bg-black-100" />
         <a
-          href="#"
+          href="https://app.reya.xyz/"
           target="_blank"
           className="hover:text-white-100 transition-colors"
         >

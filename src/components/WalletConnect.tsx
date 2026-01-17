@@ -7,17 +7,25 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-  DialogClose,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  SheetFooter,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { useWalletStore, usePositionsStore } from "@/store";
+import { useWalletStore } from "@/store";
 
 export const WalletConnect = () => {
   const walletAddress = useWalletStore((state) => state.walletAddress);
   const setWalletAddress = useWalletStore((state) => state.setWalletAddress);
-  const fetchPositions = usePositionsStore((state) => state.fetchPositions);
-  const clearPositions = usePositionsStore((state) => state.clearPositions);
+  const isDesktop = window.innerWidth >= 768;
 
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -37,12 +45,6 @@ export const WalletConnect = () => {
       return;
     }
     setWalletAddress(inputValue);
-    // Auto-fetch positions when wallet address is set
-    if (inputValue) {
-      fetchPositions(inputValue);
-    } else {
-      clearPositions();
-    }
     setError(null);
     setIsOpen(false);
   };
@@ -64,55 +66,97 @@ export const WalletConnect = () => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
+  const TriggerButton = (
+    <Button
+      variant="outline"
+      className={cn(
+        "rounded-x cursor-pointer border-black-400 bg-black-600 text-white-100 hover:bg-black-400 hover:text-white-100 text-xs font-bold transition-all duration-200"
+      )}
+    >
+      {walletAddress ? formatAddress(walletAddress) : "Connect Wallet"}
+    </Button>
+  );
+
+  const FormContent = (
+    <div className="flex flex-col space-y-4 py-4">
+      <div className="space-y-2">
+        <Input
+          id="wallet-address"
+          placeholder="0x..."
+          value={inputValue}
+          onChange={handleInputChange}
           className={cn(
-            "rounded-xl border-white-950 bg-black-600 text-white-950 hover:bg-black-100 p-2 cursor-pointer hover:text-white-100 text-xs font-bold"
+            "bg-black-900 border-black-400 text-white-100 placeholder:text-white-950 focus-visible:ring-1 focus-visible:ring-primary-300 focus-visible:border-primary-300 transition-all",
+            error &&
+              "border-error-400 focus-visible:ring-error-400 focus-visible:border-error-400"
           )}
-        >
-          {walletAddress ? formatAddress(walletAddress) : "Connect Wallet"}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md bg-black-700 border-black-100 text-white-100 duration-300">
-        <DialogHeader>
-          <DialogTitle>Connect Wallet</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col space-y-4 py-4">
-          <div className="space-y-2">
-            <Input
-              id="wallet-address"
-              placeholder="0x..."
-              value={inputValue}
-              onChange={handleInputChange}
-              className={cn(
-                "bg-black-100 border-black-100 text-white-100 placeholder:text-white-950 focus-visible:ring-0",
-                error && "border-error-400 focus-visible:ring-error-400"
-              )}
-            />
-            {error && <p className="text-xs text-error-400">{error}</p>}
-          </div>
-        </div>
-        <DialogFooter className="sm:justify-end gap-2">
-          <DialogClose asChild>
-            <Button
-              variant="ghost"
-              className="text-white-950 cursor-pointer bg-black-400 hover:text-white-100 hover:bg-black-100"
-            >
-              Cancel
-            </Button>
-          </DialogClose>
-          <Button
-            type="submit"
-            onClick={handleSave}
-            className="bg-primary-300 text-black-700 font-medium cursor-pointer hover:bg-primary-300/90 transition-colors"
-          >
-            Save
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        />
+        {error && <p className="text-xs text-error-400">{error}</p>}
+      </div>
+    </div>
+  );
+
+  const FooterContent = (
+    <>
+      <Button
+        variant="ghost"
+        onClick={() => setIsOpen(false)}
+        className="text-white-950 cursor-pointer bg-black-400 hover:text-white-100 hover:bg-black-100"
+      >
+        Cancel
+      </Button>
+      <Button
+        type="submit"
+        onClick={handleSave}
+        className="bg-primary-300 text-black-700 font-medium cursor-pointer hover:bg-primary-300/90 transition-colors"
+      >
+        Save
+      </Button>
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+        <DialogTrigger asChild>{TriggerButton}</DialogTrigger>
+        <DialogContent className="sm:max-w-md bg-black-700 border-black-400 text-white-100">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              Connect Wallet
+            </DialogTitle>
+            <DialogDescription className="text-white-950">
+              Enter your Ethereum wallet address to track your portfolio.
+            </DialogDescription>
+          </DialogHeader>
+          {FormContent}
+          <DialogFooter className="sm:justify-end gap-2">
+            {FooterContent}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
+      <SheetTrigger asChild>{TriggerButton}</SheetTrigger>
+      <SheetContent
+        side="bottom"
+        className="bg-black-700 border-t border-black-400 text-white-100 px-6 pb-8"
+      >
+        <SheetHeader className="text-left mb-4">
+          <SheetTitle className="text-xl font-bold text-white-100">
+            Connect Wallet
+          </SheetTitle>
+          <SheetDescription className="text-white-950">
+            Enter your Ethereum wallet address to track your portfolio.
+          </SheetDescription>
+        </SheetHeader>
+        {FormContent}
+        <SheetFooter className="flex-col gap-3 sm:flex-row sm:justify-end">
+          {FooterContent}
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 };

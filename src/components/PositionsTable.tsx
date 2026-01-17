@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -6,10 +7,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn, formatCurrency, formatNumber, parseSymbol } from "@/lib/utils";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import {
+  cn,
+  formatNumber,
+  parseSymbol,
+  sortPositionsByValue,
+} from "@/lib/utils";
 import { useWalletStore, usePositionsStore, usePricesStore } from "@/store";
+import { usePriceWebSocket } from "@/hooks/usePriceWebSocket";
 import type { PositionType } from "@/types/api";
-import { Loader2 } from "lucide-react";
+import { Loader2, Wifi, WifiOff } from "lucide-react";
 
 const TABLE_HEADERS = ["Market", "Size", "Position Value", "Mark Price"];
 
@@ -21,14 +29,14 @@ const PositionRow = ({ position }: PositionRowPropsType) => {
   const isLong = position.side === "B";
   const baseAsset = parseSymbol(position.symbol);
   const qty = parseFloat(position.qty);
+
   const priceData = usePricesStore((state) =>
     state.prices.find((p) => p.symbol === position.symbol)
   );
 
-  // Use oracle price from WebSocket if available, otherwise fall back to avgEntryPrice
-  const markPrice = priceData
-    ? parseFloat(priceData.oraclePrice)
-    : parseFloat(position.avgEntryPrice);
+  const markPrice = parseFloat(
+    priceData?.oraclePrice || position.avgEntryPrice
+  );
 
   const positionValue = qty * markPrice;
 
@@ -46,10 +54,10 @@ const PositionRow = ({ position }: PositionRowPropsType) => {
         {formatNumber(qty)}
       </TableCell>
       <TableCell className="text-white-100 text-xs">
-        {formatCurrency(positionValue)}
+        <AnimatedNumber value={positionValue} prefix="$" decimals={2} />
       </TableCell>
       <TableCell className="text-white-100 text-xs text-right">
-        {formatNumber(markPrice)}
+        <AnimatedNumber value={markPrice} decimals={2} />
       </TableCell>
     </TableRow>
   );
@@ -92,9 +100,30 @@ const ErrorState = ({ error }: { error: string }) => (
 
 export const PositionsTable = () => {
   const walletAddress = useWalletStore((state) => state.walletAddress);
-  const positions = usePositionsStore((state) => state.positions);
+
+  const prices = usePricesStore((state) => state.prices);
+  const clearPrices = usePricesStore((state) => state.clearPrices);
+
   const isLoading = usePositionsStore((state) => state.isLoadingPositions);
   const error = usePositionsStore((state) => state.positionsError);
+  const positions = usePositionsStore((state) => state.positions);
+  const fetchPositions = usePositionsStore((state) => state.fetchPositions);
+  const clearPositions = usePositionsStore((state) => state.clearPositions);
+
+  const { status: wsStatus } = usePriceWebSocket({
+    enabled: !!walletAddress,
+  });
+
+  useEffect(() => {
+    if (walletAddress) {
+      fetchPositions(walletAddress);
+    } else {
+      clearPositions();
+      clearPrices();
+    }
+  }, [walletAddress, fetchPositions, clearPositions, clearPrices]);
+
+  const sortedPositions = sortPositionsByValue(positions, prices);
 
   const renderTableContent = () => {
     if (!walletAddress) {
@@ -109,11 +138,11 @@ export const PositionsTable = () => {
       return <ErrorState error={error} />;
     }
 
-    if (positions.length === 0) {
+    if (sortedPositions.length === 0) {
       return <NoPositionsState />;
     }
 
-    return positions.map((position) => (
+    return sortedPositions.map((position) => (
       <PositionRow
         key={`${position.accountId}-${position.symbol}`}
         position={position}
@@ -123,7 +152,24 @@ export const PositionsTable = () => {
 
   return (
     <div className="flex flex-col gap-4 w-full px-2 py-3 border-b border-black-400">
-      <h2 className="font-bold text-white-100">Positions</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="font-bold text-white-100">Positions</h2>
+        <div className="flex items-center gap-1.5 text-xs text-white-950">
+          {wsStatus === "connected" ? (
+            <>
+              <Wifi className="h-3 w-3 text-primary-300" />
+              <span className="text-primary-300">Live</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="h-3 w-3" />
+              <span>
+                {wsStatus === "connecting" ? "Connecting..." : "Offline"}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
       <Table>
         <TableHeader className="border-none">
           <TableRow className="border-none">

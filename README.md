@@ -1,75 +1,158 @@
-# React + TypeScript + Vite
+# Reya Portfolio Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A real-time portfolio tracking application for Reya DEX that displays positions with live price updates via WebSocket.
 
-Currently, two official plugins are available:
+## Getting Started
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Prerequisites
 
-## React Compiler
+- [Bun](https://bun.sh/) (recommended) or Node.js 18+
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+### Installation
 
-Note: This will impact Vite dev & build performances.
+```bash
+# Install dependencies
+bun install
 
-## Expanding the ESLint configuration
+# Start development server
+bun run dev
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+# Build for production
+bun run build
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Preview production build
+bun run preview
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The app will be available at `http://localhost:5173`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Solution Overview
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Architecture
+
+The application follows a clean separation of concerns:
+
 ```
+src/
+├── components/       # React components
+├── hooks/            # Custom React hooks
+├── services/         # API and WebSocket services
+├── store.ts          # Zustand state management
+├── types/            # TypeScript interfaces
+└── lib/              # Utility functions
+```
+
+### Real-Time Price Updates
+
+Real-time updates are handled via WebSocket connection to `wss://ws.reya.xyz`:
+
+1. **Connection Management** (`services/websocket.ts`)
+
+   - Subscribes to `/v2/prices` channel for live oracle prices
+   - Implements ping/pong heartbeat to maintain connection
+   - Auto-reconnects on connection loss (3s delay)
+   - Gracefully handles manual disconnection
+
+2. **Performance Optimization**
+
+   - **Threshold-based updates**: Only updates the store when price deviates by ≥1 bip (0.01%) from the last stored price. This prevents excessive re-renders from micro-fluctuations.
+   - **Conditional connection**: WebSocket only connects when a wallet is connected (no unnecessary connections on initial load)
+
+3. **Visual Feedback** (`components/ui/animated-number.tsx`)
+   - Numbers animate smoothly using Framer Motion springs
+   - Color flash indicates direction: green for price increase, red for decrease
+   - Connection status indicator shows Live/Connecting/Offline state
+
+### State Management
+
+State is managed with [Zustand](https://zustand-demo.pmnd.rs/), split into three focused stores:
+
+| Store               | Purpose          | Persistence  |
+| ------------------- | ---------------- | ------------ |
+| `useWalletStore`    | Wallet address   | localStorage |
+| `usePositionsStore` | User positions   | Memory       |
+| `usePricesStore`    | Real-time prices | Memory       |
+
+**Design decisions:**
+
+- **Separate stores** for better separation of concerns and targeted subscriptions
+- **Wallet persistence** via Zustand's `persist` middleware - survives page refresh
+- **Positions & prices in memory** - fetched fresh on each session for data accuracy
+
+### Data Flow
+
+```
+┌─────────────────┐
+│  User connects  │
+│     wallet      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐     ┌─────────────────┐
+│ Fetch positions │────▶│  Fetch prices   │
+│   (REST API)    │     │   (REST API)    │
+└────────┬────────┘     └────────┬────────┘
+         │                       │
+         ▼                       ▼
+┌─────────────────┐     ┌─────────────────┐
+│PositionsStore   │     │  PricesStore    │
+└────────┬────────┘     └────────┬────────┘
+         │                       ▲
+         │              ┌────────┴────────┐
+         │              │   WebSocket     │
+         │              │ (real-time)     │
+         │              └─────────────────┘
+         ▼
+┌─────────────────────────────────┐
+│       PositionsTable            │
+│  (sorted by value, animated)    │
+└─────────────────────────────────┘
+```
+
+## Testing the Application
+
+### Manual Testing
+
+1. **Initial state**: Open the app - should show "Connect a wallet" message, WebSocket status "Offline"
+2. **Connect wallet**: Enter an Ethereum address (e.g., `0xf626e9a2fddbf55b0b1a87c56128a7ba6723a85a`)
+3. **Positions load**: Table populates with positions, WebSocket connects showing "Live"
+4. **Real-time updates**: Watch position values and mark prices animate as prices change
+5. **Persistence**: Refresh the page - wallet should remain connected
+6. **Disconnect**: Clear localStorage or implement a disconnect button
+
+### Example Wallet Addresses
+
+```
+0xf626e9a2fddbf55b0b1a87c56128a7ba6723a85a
+```
+
+## Deployment Strategy
+
+### Build & Deploy
+
+```bash
+# Production build
+bun run build
+
+# Output in dist/ - deploy to any static host
+```
+
+### Recommended Hosting
+
+- **Vercel** or **Netlify** for automatic deployments
+- **CloudFlare Pages** for edge deployment
+- Configure SPA fallback (all routes → `index.html`)
+
+## Tech Stack
+
+- **React 19** with React Compiler
+- **TypeScript** for type safety
+- **Zustand** for state management
+- **Framer Motion** for animations
+- **Tailwind CSS 4** for styling
+- **Radix UI** for accessible components
+- **Vite 7** for bundling
+
+## License
+
+Private - Reya DEX coding challenge solution.
