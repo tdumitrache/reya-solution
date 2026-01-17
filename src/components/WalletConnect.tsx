@@ -11,9 +11,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useWalletStore, usePositionsStore } from "@/store";
 
 export const WalletConnect = () => {
-  const [address, setAddress] = useState<string>("");
+  const walletAddress = useWalletStore((state) => state.walletAddress);
+  const setWalletAddress = useWalletStore((state) => state.setWalletAddress);
+  const fetchPositions = usePositionsStore((state) => state.fetchPositions);
+  const clearPositions = usePositionsStore((state) => state.clearPositions);
+
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +36,13 @@ export const WalletConnect = () => {
       setError("Invalid Ethereum address format");
       return;
     }
-    setAddress(inputValue);
+    setWalletAddress(inputValue);
+    // Auto-fetch positions when wallet address is set
+    if (inputValue) {
+      fetchPositions(inputValue);
+    } else {
+      clearPositions();
+    }
     setError(null);
     setIsOpen(false);
   };
@@ -41,13 +52,20 @@ export const WalletConnect = () => {
     if (error) setError(null);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && walletAddress) {
+      setInputValue(walletAddress);
+    }
+  };
+
   const formatAddress = (addr: string) => {
     if (!addr) return "";
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
           variant="outline"
@@ -55,7 +73,7 @@ export const WalletConnect = () => {
             "rounded-xl border-white-950 bg-black-600 text-white-950 hover:bg-black-100 p-2 cursor-pointer hover:text-white-100 text-xs font-bold"
           )}
         >
-          {address ? formatAddress(address) : "Connect Wallet"}
+          {walletAddress ? formatAddress(walletAddress) : "Connect Wallet"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md bg-black-700 border-black-100 text-white-100 duration-300">
