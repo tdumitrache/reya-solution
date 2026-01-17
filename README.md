@@ -137,11 +137,9 @@ bun run build
 # Output in dist/ - deploy to any static host
 ```
 
-### Recommended Hosting
+### Hosting
 
-- **Vercel** or **Netlify** for automatic deployments
-- **CloudFlare Pages** for edge deployment
-- Configure SPA fallback (all routes → `index.html`)
+- https://reya-solution.vercel.app/
 
 ## Tech Stack
 
