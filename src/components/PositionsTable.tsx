@@ -6,80 +6,121 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
-
-interface Position {
-  id: string;
-  market: string;
-  leverage?: string;
-  isLong: boolean;
-  size: string;
-  positionValue: string;
-  markPrice: string;
-}
-
-const POSITIONS: Position[] = [
-  {
-    id: "1",
-    market: "ETH",
-    isLong: false,
-    size: "1.30",
-    positionValue: "$30.01",
-    markPrice: "1,450.03",
-  },
-  {
-    id: "2",
-    market: "BTC",
-    isLong: true,
-    size: "123.30",
-    positionValue: "$134,307,430.01",
-    markPrice: "45,450.03",
-  },
-  {
-    id: "3",
-    market: "SOL",
-    isLong: false,
-    size: "135.30",
-    positionValue: "$107,430.01",
-    markPrice: "445,450.03",
-  },
-  {
-    id: "4",
-    market: "ETH",
-    isLong: true,
-    size: "1.30",
-    positionValue: "$30.01",
-    markPrice: "1,450.03",
-  },
-  {
-    id: "5",
-    market: "kSHIB",
-    isLong: true,
-    size: "1,283.30",
-    positionValue: "$30.01",
-    markPrice: "45,450.03",
-  },
-  {
-    id: "6",
-    market: "PYTH 5x",
-    isLong: false,
-    size: "1345.30",
-    positionValue: "$0.01",
-    markPrice: "445,450.03",
-  },
-  {
-    id: "7",
-    market: "ETH 15x",
-    isLong: false,
-    size: "1.30",
-    positionValue: "$670.01",
-    markPrice: "1,450.03",
-  },
-];
+import { cn, formatCurrency, formatNumber, parseSymbol } from "@/lib/utils";
+import { useWalletStore, usePositionsStore, usePricesStore } from "@/store";
+import type { PositionType } from "@/types/api";
+import { Loader2 } from "lucide-react";
 
 const TABLE_HEADERS = ["Market", "Size", "Position Value", "Mark Price"];
 
+interface PositionRowPropsType {
+  position: PositionType;
+}
+
+const PositionRow = ({ position }: PositionRowPropsType) => {
+  const isLong = position.side === "B";
+  const baseAsset = parseSymbol(position.symbol);
+  const qty = parseFloat(position.qty);
+  const priceData = usePricesStore((state) =>
+    state.prices.find((p) => p.symbol === position.symbol)
+  );
+
+  // Use oracle price from WebSocket if available, otherwise fall back to avgEntryPrice
+  const markPrice = priceData
+    ? parseFloat(priceData.oraclePrice)
+    : parseFloat(position.avgEntryPrice);
+
+  const positionValue = qty * markPrice;
+
+  return (
+    <TableRow className="border-none">
+      <TableCell
+        className={cn("font-medium text-xs", {
+          "text-primary-300": isLong,
+          "text-error-400": !isLong,
+        })}
+      >
+        {baseAsset}
+      </TableCell>
+      <TableCell className="text-white-100 text-xs">
+        {formatNumber(qty)}
+      </TableCell>
+      <TableCell className="text-white-100 text-xs">
+        {formatCurrency(positionValue)}
+      </TableCell>
+      <TableCell className="text-white-100 text-xs text-right">
+        {formatNumber(markPrice)}
+      </TableCell>
+    </TableRow>
+  );
+};
+
+const EmptyState = () => (
+  <TableRow className="border-none">
+    <TableCell colSpan={4} className="text-center text-white-950 py-8">
+      Connect a wallet to view positions
+    </TableCell>
+  </TableRow>
+);
+
+const NoPositionsState = () => (
+  <TableRow className="border-none">
+    <TableCell colSpan={4} className="text-center text-white-950 py-8">
+      No open positions found
+    </TableCell>
+  </TableRow>
+);
+
+const LoadingState = () => (
+  <TableRow className="border-none">
+    <TableCell colSpan={4} className="text-center py-8">
+      <div className="flex items-center justify-center gap-2 text-white-950">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Loading positions...
+      </div>
+    </TableCell>
+  </TableRow>
+);
+
+const ErrorState = ({ error }: { error: string }) => (
+  <TableRow className="border-none">
+    <TableCell colSpan={4} className="text-center text-error-400 py-8">
+      {error}
+    </TableCell>
+  </TableRow>
+);
+
 export const PositionsTable = () => {
+  const walletAddress = useWalletStore((state) => state.walletAddress);
+  const positions = usePositionsStore((state) => state.positions);
+  const isLoading = usePositionsStore((state) => state.isLoadingPositions);
+  const error = usePositionsStore((state) => state.positionsError);
+
+  const renderTableContent = () => {
+    if (!walletAddress) {
+      return <EmptyState />;
+    }
+
+    if (isLoading) {
+      return <LoadingState />;
+    }
+
+    if (error) {
+      return <ErrorState error={error} />;
+    }
+
+    if (positions.length === 0) {
+      return <NoPositionsState />;
+    }
+
+    return positions.map((position) => (
+      <PositionRow
+        key={`${position.accountId}-${position.symbol}`}
+        position={position}
+      />
+    ));
+  };
+
   return (
     <div className="flex flex-col gap-4 w-full px-2 py-3 border-b border-black-400">
       <h2 className="font-bold text-white-100">Positions</h2>
@@ -98,29 +139,7 @@ export const PositionsTable = () => {
             ))}
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {POSITIONS.map((position) => (
-            <TableRow key={position.id} className="border-none">
-              <TableCell
-                className={cn(
-                  "font-medium text-xs",
-                  position.isLong ? "text-primary-300" : "text-error-400"
-                )}
-              >
-                {position.market}
-              </TableCell>
-              <TableCell className="text-white-100 text-xs">
-                {position.size}
-              </TableCell>
-              <TableCell className="text-white-100 text-xs">
-                {position.positionValue}
-              </TableCell>
-              <TableCell className="text-white-100 text-xs text-right">
-                {position.markPrice}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
+        <TableBody>{renderTableContent()}</TableBody>
       </Table>
     </div>
   );
