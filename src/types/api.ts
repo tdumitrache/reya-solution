@@ -36,6 +36,7 @@ export interface PositionsSliceType {
   isLoadingPositions: boolean;
   positionsError: string | null;
   fetchPositions: (address: string) => Promise<void>;
+  setPositions: (positions: PositionType[]) => void;
   clearPositions: () => void;
 }
 

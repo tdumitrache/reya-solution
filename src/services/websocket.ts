@@ -4,10 +4,11 @@ import type {
   WebSocketPongMessageType,
   WebSocketSubscribeMessageType,
 } from "@/types/api";
-import { usePricesStore } from "@/store";
+import { usePositionsStore, usePricesStore, useWalletStore } from "@/store";
 
 const WS_URL = "wss://ws.reya.xyz";
 const PRICES_CHANNEL = "/v2/prices";
+const POSITIONS_CHANNEL = (address: string) => `/v2/wallet/${address}/positions`;
 const RECONNECT_DELAY_MS = 3000;
 const PRICE_THRESHOLD_BIPS = 1; // 1 bip = 0.01%
 
@@ -34,6 +35,8 @@ export const createPriceWebSocket = (
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   let isManualClose = false;
 
+  const address = useWalletStore.getState().walletAddress
+
   const connect = () => {
     const isReady =
       ws?.readyState === WebSocket.OPEN ||
@@ -53,7 +56,15 @@ export const createPriceWebSocket = (
         type: "subscribe",
         channel: PRICES_CHANNEL,
       };
+
+      const positionsSubscribeMessage: WebSocketSubscribeMessageType = {
+        type: "subscribe",
+        channel: POSITIONS_CHANNEL(address ?? ""),
+      };
+
+
       ws?.send(JSON.stringify(subscribeMessage));
+      ws?.send(JSON.stringify(positionsSubscribeMessage));
     };
 
     ws.onmessage = (event) => {
@@ -78,6 +89,8 @@ export const createPriceWebSocket = (
   };
 
   const handleMessage = (message: WebSocketIncomingMessageType) => {
+const addressLowerCase = address?.toLowerCase();
+
     switch (message.type) {
       case "ping": {
         const pongMessage: WebSocketPongMessageType = {
@@ -97,6 +110,11 @@ export const createPriceWebSocket = (
       case "channel_data":
         if (message.channel === PRICES_CHANNEL) {
           handlePriceUpdates(message.data);
+        }
+
+        if (message.channel === POSITIONS_CHANNEL(addressLowerCase ?? "")) {
+          console.log("message.data", message.data);
+          usePositionsStore.getState().setPositions(message.data);
         }
         break;
 

@@ -5,6 +5,7 @@ import type {
   PositionsSliceType,
   PricesSliceType,
   PriceType,
+  PositionType,
 } from "@/types/api";
 import { fetchWalletPositions, fetchAllPrices } from "@/services/api";
 
@@ -59,7 +60,7 @@ export const usePricesStore = create<PricesSliceType>((set, get) => ({
   },
 }));
 
-export const usePositionsStore = create<PositionsSliceType>((set) => ({
+export const usePositionsStore = create<PositionsSliceType>((set, get) => ({
   positions: [],
   isLoadingPositions: false,
   positionsError: null,
@@ -78,6 +79,22 @@ export const usePositionsStore = create<PositionsSliceType>((set) => ({
         positions: [],
       });
     }
+  },
+  setPositions: (positions: PositionType[]) => {
+    const currentPositions = get().positions;
+    const positionsMap = new Map(
+      currentPositions.map((p) => [p.symbol, p])
+    );
+
+    for (const position of positions) {
+      if (position.qty === "0") {
+        positionsMap.delete(position.symbol);
+      } else {
+        positionsMap.set(position.symbol, position);
+      }
+    }
+
+    set({ positions: Array.from(positionsMap.values()) });
   },
   clearPositions: () => {
     set({ positions: [], positionsError: null });
