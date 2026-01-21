@@ -1,4 +1,5 @@
 import type {
+  PositionType,
   PriceType,
   WebSocketIncomingMessageType,
   WebSocketPongMessageType,
@@ -109,12 +110,12 @@ const addressLowerCase = address?.toLowerCase();
 
       case "channel_data":
         if (message.channel === PRICES_CHANNEL) {
-          handlePriceUpdates(message.data);
+          handlePriceUpdates(message.data as PriceType[]);
         }
 
         if (message.channel === POSITIONS_CHANNEL(addressLowerCase ?? "")) {
           console.log("message.data", message.data);
-          usePositionsStore.getState().setPositions(message.data);
+          usePositionsStore.getState().setPositions(message.data as PositionType[]);
         }
         break;
 

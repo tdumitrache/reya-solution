@@ -86,7 +86,7 @@ export interface WebSocketChannelDataMessageType {
   type: "channel_data";
   timestamp: number;
   channel: string;
-  data: PriceType[];
+  data: PriceType[] | PositionType[];
 }
 
 export interface WebSocketErrorMessageType {
